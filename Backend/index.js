@@ -53,23 +53,30 @@ app.post("/api/login", async (req, res) => {
     console.log(req.body.email, req.body.password)
     let user = await userModel.findOne({ email: req.body.email });
 
-
     if (!user) {
         console.log("user not found in database");
-        return res.send("User not found");
+        return res.json({ status: "error", message: "User not found" }); // ✅ Send JSON response
     }
+    
     console.log("user found", user);
+    
     bcrypt.compare(req.body.password, user.password, (err, result) => {
-
+        if (err) {
+            console.error("Bcrypt error:", err);
+            return res.json({ status: "error", message: "Authentication error" });
+        }
+        
         if (result) {
             let token = jwt.sign({ email: user.email }, "shhhhhhhhhhhh", { expiresIn: "1h" });
-
-            res.cookie("token", token, { httpOnly: true }); // Secure the token in a cookie
-            return res.json({ status: "ok", message: "User verified" }); // ✅ Send JSON response
+            res.cookie("token", token, { httpOnly: true });
+            return res.json({ status: "ok", message: "User verified" }); // ✅ Correct response
+        } else {
+            // ✅ Handle wrong password case
+            console.log("Password incorrect");
+            return res.json({ status: "error", message: "Invalid password" });
         }
-
-    })
-})
+    });
+});
 
 app.listen(1337, () => {
     console.log("server is started");

@@ -1,9 +1,19 @@
+const path = require('path'); // Required before using it for dotenv path
+require('dotenv').config({ path: path.join(__dirname, '.env') }); // Load .env from this specific directory
+
 const express = require('express');
 const app = express();
 const cors = require('cors');
 const multer = require('multer');
-const path = require('path');
 const fs = require('fs');
+
+
+
+
+console.log('=== Environment Variables Debug ===');
+console.log('GEMINI_API_KEY exists:', !!process.env.GEMINI_API_KEY);
+console.log('PORT exists:', !!process.env.PORT);
+console.log('=====================================');
 
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
@@ -13,7 +23,7 @@ const analyzePDF = require('../gemini');
 connectToMongo();
 
 // Create files directory if it doesn't exist
-const filesDir = path.join(__dirname, 'files');
+const filesDir = path.join(__dirname, 'files'); 
 if (!fs.existsSync(filesDir)) {
     fs.mkdirSync(filesDir, { recursive: true });
 }
@@ -143,12 +153,18 @@ app.get('/test-gemini', async (req, res) => {
             return res.status(500).json({ error: "GEMINI_API_KEY not set" });
         }
         const genAI = new GoogleGenerativeAI(apiKey);
-
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" }); // Changed from gemini-1.0-pro
-
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
         const result = await model.generateContent("What is the capital of France?");
 
-        const responseText = result.response.text();
+        // Safely extract the response text from Gemini API result
+        let responseText = "";
+        if (result && result.response && result.response.candidates && result.response.candidates[0] && result.response.candidates[0].content && result.response.candidates[0].content.parts && result.response.candidates[0].content.parts[0] && result.response.candidates[0].content.parts[0].text) {
+            responseText = result.response.candidates[0].content.parts[0].text;
+        } else if (result && result.response && typeof result.response.text === 'function') {
+            responseText = result.response.text();
+        } else {
+            responseText = JSON.stringify(result);
+        }
 
         res.json({ success: true, response: responseText });
     } catch (error) {
